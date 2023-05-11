@@ -1,7 +1,10 @@
 import ReactDOM from 'react-dom/client';
+import { ConfigProvider } from 'antd';
 import App from './App.tsx';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
-  <App />
+  <ConfigProvider componentSize="small">
+    <App />
+  </ConfigProvider>
 );

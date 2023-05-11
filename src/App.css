@@ -1,0 +1,21 @@
+.container {
+  position: relative;
+}
+
+.control {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background-color: rgba(255, 255, 255, 0.9);
+  width: 300px;
+  padding: 10px;
+  border-radius: 10px;
+}
+
+.control .ant-form-item {
+  margin-bottom: 5px !important;
+}
+
+.control .ant-slider {
+  margin: 0 !important;
+}
