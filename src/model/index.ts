@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 
+import { randomColor } from '../utils';
+import { CAMERA_POSITION, POINT_LIGHT_POSITION } from '../constants';
+
 class Model {
   private camera: THREE.OrthographicCamera | null = null;
 
@@ -11,48 +14,82 @@ class Model {
 
   private container: HTMLElement | null = null;
 
+  private raycaster: THREE.Raycaster | null = null;
+
+  private lightMesh: THREE.Mesh | null = null;
+
+  constructor() {
+    document.addEventListener('mousedown', this.handleMouseDown);
+  }
+
   init = (config: { wrap: HTMLElement | null }) => {
     // 创建场景
     const scene = new THREE.Scene();
     this.scene = scene;
 
-    // 创建网格模型
+    // 创建网格模型（充当物体）
     const geometry = new THREE.BoxGeometry(100, 100, 100);
     const material = new THREE.MeshLambertMaterial({ color: 0x0000ff });
     const mesh = new THREE.Mesh(geometry, material);
     scene.add(mesh);
 
-    //点光源
+    // 创建网格模型（充当点光源）
+    const lightGeometry = new THREE.SphereGeometry(10, 32, 16);
+    const lightMaterial = new THREE.MeshLambertMaterial({
+      color: 0xffffff,
+    });
+    const lightMesh = new THREE.Mesh(lightGeometry, lightMaterial);
+    lightMesh.position.set(
+      POINT_LIGHT_POSITION.x,
+      POINT_LIGHT_POSITION.y,
+      POINT_LIGHT_POSITION.z
+    );
+    this.lightMesh = lightMesh;
+    scene.add(lightMesh);
+
+    // 点光源
     const point = new THREE.PointLight(0xffffff);
     this.pointLight = point;
-    point.position.set(400, 200, 300); //点光源位置
-    scene.add(point); //点光源添加到场景中
-    //环境光
-    const ambient = new THREE.AmbientLight(0x444444);
+    point.position.set(
+      POINT_LIGHT_POSITION.x,
+      POINT_LIGHT_POSITION.y,
+      POINT_LIGHT_POSITION.z
+    );
+    scene.add(point);
+    // 添加点光源照亮灯泡
+    const lightPoint = new THREE.PointLight(0xbbbbbb);
+    lightPoint.position.set(100, 100, 100);
+    scene.add(lightPoint);
+    // 环境光
+    const ambient = new THREE.AmbientLight(0x666666);
     scene.add(ambient);
 
     // 相机
-    const width = window.innerWidth; //窗口宽度
-    const height = window.innerHeight; //窗口高度
-    const k = width / height; //窗口宽高比
-    const s = 200; //三维场景显示范围控制系数，系数越大，显示的范围越大
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    const k = width / height;
+    const s = 200; // 三维场景显示范围控制系数，系数越大，显示的范围越大
     const camera = new THREE.OrthographicCamera(-s * k, s * k, s, -s, 1, 1000);
-    camera.position.set(200, 300, 200); //设置相机位置
-    camera.lookAt(scene.position); //设置相机方向(指向的场景对象)
+    camera.position.set(
+      CAMERA_POSITION.x,
+      CAMERA_POSITION.y,
+      CAMERA_POSITION.z
+    );
+    camera.lookAt(scene.position);
     this.camera = camera;
 
     // 渲染器
     const renderer = new THREE.WebGLRenderer();
     this.renderer = renderer;
-    renderer.setSize(width, height); //设置渲染区域尺寸
-    renderer.setClearColor(0x000000, 1); //设置背景颜色
+    renderer.setSize(width, height);
+    renderer.setClearColor(0x000000, 1);
     const wrap = config.wrap || document.body;
     wrap.appendChild(renderer.domElement);
     this.container = wrap;
     this.render();
 
-    // const controls = new THREE.OrbitControls(camera,renderer.domElement);//创建控件对象
-    // controls.addEventListener('change', render);
+    // 用于鼠标拾取
+    this.raycaster = new THREE.Raycaster();
   };
 
   // 移动相机
@@ -73,6 +110,28 @@ class Model {
     this.pointLight.position.set(x, y, z); //点光源位置
     this.scene.add(this.pointLight);
     this.render();
+    this.lightMesh?.position.set(x, y, z);
+  };
+
+  handleMouseDown = (e: MouseEvent) => {
+    if (!this.raycaster || !this.scene || !this.camera) {
+      return;
+    }
+    const pointer = new THREE.Vector2();
+    // 屏幕坐标转换为分量取值-1到1的 NDC 坐标，供顶点着色器使用
+    // 原点从左上角变成了中心位置，经换算得到下面的公式
+    pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+    pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    this.raycaster.setFromCamera(pointer, this.camera);
+    const intersects = this.raycaster.intersectObjects(this.scene.children);
+    intersects.forEach(() => {
+      const color = new THREE.Color(randomColor());
+      (
+        (intersects[0].object as THREE.Mesh)
+          .material as THREE.MeshLambertMaterial
+      ).color.set(color);
+    });
+    this.render();
   };
 
   // 渲染
@@ -88,6 +147,7 @@ class Model {
     this.renderer?.dispose();
     this.container?.removeChild(this.renderer?.domElement as Node);
     this.container = null;
+    document.removeEventListener('mousedown', this.handleMouseDown);
   };
 }
 
