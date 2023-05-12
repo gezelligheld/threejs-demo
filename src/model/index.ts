@@ -16,7 +16,11 @@ class Model {
 
   private raycaster: THREE.Raycaster | null = null;
 
+  private mesh: THREE.Mesh | null = null;
+
   private lightMesh: THREE.Mesh | null = null;
+
+  private animationFrameId: number | null = null;
 
   constructor() {
     document.addEventListener('mousedown', this.handleMouseDown);
@@ -31,6 +35,7 @@ class Model {
     const geometry = new THREE.BoxGeometry(100, 100, 100);
     const material = new THREE.MeshLambertMaterial({ color: 0x0000ff });
     const mesh = new THREE.Mesh(geometry, material);
+    this.mesh = mesh;
     scene.add(mesh);
 
     // 创建网格模型（充当点光源）
@@ -68,7 +73,8 @@ class Model {
     const width = window.innerWidth;
     const height = window.innerHeight;
     const k = width / height;
-    const s = 200; // 三维场景显示范围控制系数，系数越大，显示的范围越大
+    // 三维场景显示范围控制系数，系数越大，显示的范围越大
+    const s = 200;
     const camera = new THREE.OrthographicCamera(-s * k, s * k, s, -s, 1, 1000);
     camera.position.set(
       CAMERA_POSITION.x,
@@ -123,6 +129,8 @@ class Model {
     pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
     pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
     this.raycaster.setFromCamera(pointer, this.camera);
+    // 获取点击到的物体
+    // 原理是从物体中心向点击位置发射一条射线，如果这个距离比物体中心到物体顶点的距离都要小，则点A在物体里面
     const intersects = this.raycaster.intersectObjects(this.scene.children);
     intersects.forEach(() => {
       const color = new THREE.Color(randomColor());
@@ -132,6 +140,29 @@ class Model {
       ).color.set(color);
     });
     this.render();
+  };
+
+  // 自动旋转切换
+  toggleAutoRotate = (value: boolean) => {
+    if (value) {
+      const autoRun = () => {
+        this.animationFrameId &&
+          window.cancelAnimationFrame(this.animationFrameId);
+        if (this.mesh) {
+          this.mesh.rotation.set(
+            this.mesh.rotation.x + 0.01,
+            this.mesh.rotation.y + 0.01,
+            this.mesh.rotation.z + 0.01
+          );
+          this.render();
+        }
+        this.animationFrameId = window.requestAnimationFrame(autoRun);
+      };
+      this.animationFrameId = window.requestAnimationFrame(autoRun);
+    } else {
+      this.animationFrameId &&
+        window.cancelAnimationFrame(this.animationFrameId);
+    }
   };
 
   // 渲染

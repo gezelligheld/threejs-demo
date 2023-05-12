@@ -49,16 +49,18 @@ function App() {
         >
           <div>相机</div>
           <Form.Item label="x" name="x">
-            <Slider min={0} max={1000} />
+            <Slider min={-1000} max={1000} />
           </Form.Item>
           <Form.Item label="y" name="y">
-            <Slider min={0} max={1000} />
+            <Slider min={-1000} max={1000} />
           </Form.Item>
           <Form.Item label="z" name="z">
-            <Slider min={0} max={1000} />
+            <Slider min={-1000} max={1000} />
           </Form.Item>
           <Form.Item label="自动旋转" name="rotate" valuePropName="checked">
-            <Checkbox />
+            <Checkbox
+              onChange={(e) => model.toggleAutoRotate(e.target.checked)}
+            />
           </Form.Item>
         </Form>
         <Form
@@ -67,13 +69,13 @@ function App() {
         >
           <div>点光源</div>
           <Form.Item label="x" name="x">
-            <Slider min={0} max={1000} />
+            <Slider min={-1000} max={1000} />
           </Form.Item>
           <Form.Item label="y" name="y">
-            <Slider min={0} max={1000} />
+            <Slider min={-1000} max={1000} />
           </Form.Item>
           <Form.Item label="z" name="z">
-            <Slider min={0} max={1000} />
+            <Slider min={-1000} max={1000} />
           </Form.Item>
         </Form>
       </div>
