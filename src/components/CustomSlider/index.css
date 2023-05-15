@@ -1,0 +1,16 @@
+.custom-silder-text {
+  margin-left: 10px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.custom-silder {
+  display: flex;
+  justify-content: space-between;
+  align-content: center;
+}
+
+.custom-silder .ant-slider {
+  flex: 1;
+  position: relative;
+  top: 7px;
+}

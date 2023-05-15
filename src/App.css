@@ -6,7 +6,7 @@
   position: absolute;
   top: 0;
   right: 0;
-  background-color: rgba(255, 255, 255, 0.9);
+  background-color: rgba(255, 255, 255, 0.3);
   width: 300px;
   padding: 10px;
   border-radius: 10px;
@@ -16,6 +16,15 @@
   margin-bottom: 5px !important;
 }
 
+.control label {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
 .control .ant-slider {
   margin: 0 !important;
+}
+
+.title {
+  font-weight: bold;
+  color: rgba(255, 255, 255, 0.8);
 }

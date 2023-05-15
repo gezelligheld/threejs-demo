@@ -1,26 +1,46 @@
 import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import gsap from 'gsap';
+import { EventEmitter } from 'events';
 
 import { randomColor } from '../utils';
-import { CAMERA_POSITION, POINT_LIGHT_POSITION } from '../constants';
+import {
+  CAMERA_POSITION,
+  POINT_LIGHT_POSITION,
+  EVENT_MAPS,
+} from '../constants';
 
 class Model {
+  // 相机
   private camera: THREE.OrthographicCamera | null = null;
 
+  // 场景
   private scene: THREE.Scene | null = null;
 
+  // 渲染器
   private renderer: THREE.WebGLRenderer | null = null;
 
+  // 点光源
   private pointLight: THREE.PointLight | null = null;
 
+  // webgl容器
   private container: HTMLElement | null = null;
 
+  // 鼠标拾取
   private raycaster: THREE.Raycaster | null = null;
 
+  // 网格模型
   private mesh: THREE.Mesh | null = null;
 
-  private lightMesh: THREE.Mesh | null = null;
-
   private animationFrameId: number | null = null;
+
+  // 轨道控制器
+  private orbitControls: OrbitControls | null = null;
+
+  // 是否自动旋转物体
+  private isAutoRotate = false;
+
+  event = new EventEmitter();
 
   constructor() {
     document.addEventListener('mousedown', this.handleMouseDown);
@@ -38,20 +58,6 @@ class Model {
     this.mesh = mesh;
     scene.add(mesh);
 
-    // 创建网格模型（充当点光源）
-    const lightGeometry = new THREE.SphereGeometry(10, 32, 16);
-    const lightMaterial = new THREE.MeshLambertMaterial({
-      color: 0xffffff,
-    });
-    const lightMesh = new THREE.Mesh(lightGeometry, lightMaterial);
-    lightMesh.position.set(
-      POINT_LIGHT_POSITION.x,
-      POINT_LIGHT_POSITION.y,
-      POINT_LIGHT_POSITION.z
-    );
-    this.lightMesh = lightMesh;
-    scene.add(lightMesh);
-
     // 点光源
     const point = new THREE.PointLight(0xffffff);
     this.pointLight = point;
@@ -61,13 +67,17 @@ class Model {
       POINT_LIGHT_POSITION.z
     );
     scene.add(point);
-    // 添加点光源照亮灯泡
-    const lightPoint = new THREE.PointLight(0xbbbbbb);
-    lightPoint.position.set(100, 100, 100);
-    scene.add(lightPoint);
+    // 模拟点光源路径
+    const pointLightHelper = new THREE.PointLightHelper(point, 50);
+    scene.add(pointLightHelper);
     // 环境光
     const ambient = new THREE.AmbientLight(0x666666);
     scene.add(ambient);
+
+    const axesHelper = new THREE.AxesHelper(
+      Math.max(window.innerWidth, window.innerHeight)
+    );
+    scene.add(axesHelper);
 
     // 相机
     const width = window.innerWidth;
@@ -87,11 +97,18 @@ class Model {
     // 渲染器
     const renderer = new THREE.WebGLRenderer();
     this.renderer = renderer;
-    renderer.setSize(width, height);
+    // 不减1会出现滚动条，why?
+    renderer.setSize(width, height - 1);
     renderer.setClearColor(0x000000, 1);
     const wrap = config.wrap || document.body;
     wrap.appendChild(renderer.domElement);
     this.container = wrap;
+    // 轨道控制器，可以鼠标控制物体
+    const controls = new OrbitControls(camera, renderer.domElement);
+    // 启用阻尼，增加重量感
+    controls.enableDamping = true;
+    controls.addEventListener('change', this.handleControlsChange);
+    this.orbitControls = controls;
     this.render();
 
     // 用于鼠标拾取
@@ -105,7 +122,6 @@ class Model {
     }
     this.camera.position.set(x, y, z);
     this.camera.lookAt(this.scene.position);
-    this.render();
   };
 
   // 移动点光源
@@ -115,8 +131,6 @@ class Model {
     }
     this.pointLight.position.set(x, y, z); //点光源位置
     this.scene.add(this.pointLight);
-    this.render();
-    this.lightMesh?.position.set(x, y, z);
   };
 
   handleMouseDown = (e: MouseEvent) => {
@@ -130,7 +144,7 @@ class Model {
     pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
     this.raycaster.setFromCamera(pointer, this.camera);
     // 获取点击到的物体
-    // 原理是从物体中心向点击位置发射一条射线，如果这个距离比物体中心到物体顶点的距离都要小，则点A在物体里面
+    // 原理是从物体中心向点击位置发射一条射线，如果这个距离比物体中心到物体顶点的距离都要小，则点击位置在物体里面
     const intersects = this.raycaster.intersectObjects(this.scene.children);
     intersects.forEach(() => {
       const color = new THREE.Color(randomColor());
@@ -139,38 +153,48 @@ class Model {
           .material as THREE.MeshLambertMaterial
       ).color.set(color);
     });
-    this.render();
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  handleControlsChange = (e: any) => {
+    const position = e.target.object.position;
+    this.event.emit(EVENT_MAPS.OrbitControlsChange, {
+      x: Math.floor(position.x),
+      y: Math.floor(position.y),
+      z: Math.floor(position.z),
+    });
   };
 
   // 自动旋转切换
   toggleAutoRotate = (value: boolean) => {
-    if (value) {
-      const autoRun = () => {
-        this.animationFrameId &&
-          window.cancelAnimationFrame(this.animationFrameId);
-        if (this.mesh) {
-          this.mesh.rotation.set(
-            this.mesh.rotation.x + 0.01,
-            this.mesh.rotation.y + 0.01,
-            this.mesh.rotation.z + 0.01
-          );
-          this.render();
-        }
-        this.animationFrameId = window.requestAnimationFrame(autoRun);
-      };
-      this.animationFrameId = window.requestAnimationFrame(autoRun);
-    } else {
-      this.animationFrameId &&
-        window.cancelAnimationFrame(this.animationFrameId);
-    }
+    this.isAutoRotate = value;
   };
 
   // 渲染
   render = () => {
-    if (!this.camera || !this.scene || !this.renderer) {
-      return;
-    }
-    this.renderer.render(this.scene, this.camera);
+    const autoRun = () => {
+      if (
+        !this.camera ||
+        !this.scene ||
+        !this.renderer ||
+        !this.orbitControls
+      ) {
+        return;
+      }
+      this.animationFrameId &&
+        window.cancelAnimationFrame(this.animationFrameId);
+      if (this.mesh && this.isAutoRotate) {
+        this.mesh.rotation.set(
+          this.mesh.rotation.x + 0.01,
+          this.mesh.rotation.y + 0.01,
+          this.mesh.rotation.z + 0.01
+        );
+      }
+      this.orbitControls.update();
+      this.renderer.render(this.scene, this.camera);
+      this.animationFrameId = window.requestAnimationFrame(autoRun);
+    };
+    this.animationFrameId = window.requestAnimationFrame(autoRun);
   };
 
   // 销毁
@@ -178,7 +202,13 @@ class Model {
     this.renderer?.dispose();
     this.container?.removeChild(this.renderer?.domElement as Node);
     this.container = null;
+
     document.removeEventListener('mousedown', this.handleMouseDown);
+    this.orbitControls?.removeEventListener(
+      'change',
+      this.handleControlsChange
+    );
+    this.event.removeAllListeners();
   };
 }
 

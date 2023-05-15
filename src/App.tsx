@@ -1,11 +1,15 @@
 import { useMemo, useRef, useEffect } from 'react';
-import { Slider, Form, FormProps, Checkbox } from 'antd';
+import { Form, FormProps, Checkbox } from 'antd';
+
+import CustomSlider from './components/CustomSlider';
 import Model from './model';
-import { CAMERA_POSITION } from './constants';
+import { CAMERA_POSITION, EVENT_MAPS } from './constants';
 import './App.css';
 
 function App() {
   const containerRef = useRef<HTMLDivElement | null>(null);
+
+  const [form] = Form.useForm();
 
   const model = useMemo(() => new Model(), []);
 
@@ -35,27 +39,31 @@ function App() {
 
   useEffect(() => {
     model.init({ wrap: containerRef.current });
+    model.event.on(EVENT_MAPS.OrbitControlsChange, (position) => {
+      form.setFieldsValue(position);
+    });
     return () => {
       model.destroy();
     };
-  }, [model]);
+  }, [form, model]);
 
   return (
     <div className="container" ref={containerRef}>
       <div className="control">
         <Form
+          form={form}
           onFieldsChange={handleCameraChange}
           initialValues={CAMERA_POSITION}
         >
-          <div>相机</div>
+          <div className="title">相机</div>
           <Form.Item label="x" name="x">
-            <Slider min={-1000} max={1000} />
+            <CustomSlider min={-1000} max={1000} />
           </Form.Item>
           <Form.Item label="y" name="y">
-            <Slider min={-1000} max={1000} />
+            <CustomSlider min={-1000} max={1000} />
           </Form.Item>
           <Form.Item label="z" name="z">
-            <Slider min={-1000} max={1000} />
+            <CustomSlider min={-1000} max={1000} />
           </Form.Item>
           <Form.Item label="自动旋转" name="rotate" valuePropName="checked">
             <Checkbox
@@ -67,15 +75,15 @@ function App() {
           onFieldsChange={handleLightChange}
           initialValues={CAMERA_POSITION}
         >
-          <div>点光源</div>
+          <div className="title">点光源</div>
           <Form.Item label="x" name="x">
-            <Slider min={-1000} max={1000} />
+            <CustomSlider min={-1000} max={1000} />
           </Form.Item>
           <Form.Item label="y" name="y">
-            <Slider min={-1000} max={1000} />
+            <CustomSlider min={-1000} max={1000} />
           </Form.Item>
           <Form.Item label="z" name="z">
-            <Slider min={-1000} max={1000} />
+            <CustomSlider min={-1000} max={1000} />
           </Form.Item>
         </Form>
       </div>
