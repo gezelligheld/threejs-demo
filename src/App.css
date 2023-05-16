@@ -18,13 +18,24 @@
 
 .control label {
   color: rgba(255, 255, 255, 0.8) !important;
+  font-size: 12px !important;
 }
 
 .control .ant-slider {
   margin: 0 !important;
 }
 
+.control .ant-input-number {
+  width: 60px !important;
+}
+
+.control .ant-btn {
+  font-size: 12px;
+}
+
 .title {
   font-weight: bold;
+  margin-bottom: 5px;
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.8);
 }

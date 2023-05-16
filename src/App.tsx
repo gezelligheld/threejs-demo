@@ -1,12 +1,19 @@
-import { useMemo, useRef, useEffect } from 'react';
-import { Form, FormProps, Checkbox } from 'antd';
+import { useMemo, useRef, useEffect, useState } from 'react';
+import { Form, FormProps, Checkbox, InputNumber, Button } from 'antd';
 
 import CustomSlider from './components/CustomSlider';
 import Model from './model';
-import { CAMERA_POSITION, EVENT_MAPS } from './constants';
+import {
+  CAMERA_POSITION,
+  EVENT_MAPS,
+  POINT_LIGHT_POSITION,
+  ANIMATION_POSITION,
+} from './constants';
 import './App.css';
 
 function App() {
+  const [animating, setAnimating] = useState(false);
+
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const [form] = Form.useForm();
@@ -37,10 +44,20 @@ function App() {
     model.movePointLight(data.x, data.y, data.z);
   };
 
+  const handleAnimationFinish: FormProps['onFinish'] = (values) => {
+    model.animate(values.x || 0, values.y || 0, values.z || 0);
+  };
+
   useEffect(() => {
     model.init({ wrap: containerRef.current });
-    model.event.on(EVENT_MAPS.OrbitControlsChange, (position) => {
+    model.event.on(EVENT_MAPS.orbitControlsChange, (position) => {
       form.setFieldsValue(position);
+    });
+    model.event.on(EVENT_MAPS.animateStart, () => {
+      setAnimating(true);
+    });
+    model.event.on(EVENT_MAPS.animateEnd, () => {
+      setAnimating(false);
     });
     return () => {
       model.destroy();
@@ -50,12 +67,12 @@ function App() {
   return (
     <div className="container" ref={containerRef}>
       <div className="control">
+        <div className="title">相机</div>
         <Form
           form={form}
           onFieldsChange={handleCameraChange}
           initialValues={CAMERA_POSITION}
         >
-          <div className="title">相机</div>
           <Form.Item label="x" name="x">
             <CustomSlider min={-1000} max={1000} />
           </Form.Item>
@@ -71,11 +88,11 @@ function App() {
             />
           </Form.Item>
         </Form>
+        <div className="title">点光源</div>
         <Form
           onFieldsChange={handleLightChange}
-          initialValues={CAMERA_POSITION}
+          initialValues={POINT_LIGHT_POSITION}
         >
-          <div className="title">点光源</div>
           <Form.Item label="x" name="x">
             <CustomSlider min={-1000} max={1000} />
           </Form.Item>
@@ -84,6 +101,27 @@ function App() {
           </Form.Item>
           <Form.Item label="z" name="z">
             <CustomSlider min={-1000} max={1000} />
+          </Form.Item>
+        </Form>
+        <div className="title">动画</div>
+        <Form
+          layout="inline"
+          initialValues={ANIMATION_POSITION}
+          onFinish={handleAnimationFinish}
+        >
+          <Form.Item label="x" name="x">
+            <InputNumber width={100} min={-1000} max={1000} />
+          </Form.Item>
+          <Form.Item label="y" name="y">
+            <InputNumber min={-1000} max={1000} />
+          </Form.Item>
+          <Form.Item label="z" name="z">
+            <InputNumber min={-1000} max={1000} />
+          </Form.Item>
+          <Form.Item>
+            <Button htmlType="submit" loading={animating}>
+              {animating ? '运行中' : '开始'}
+            </Button>
           </Form.Item>
         </Form>
       </div>

@@ -158,10 +158,30 @@ class Model {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   handleControlsChange = (e: any) => {
     const position = e.target.object.position;
-    this.event.emit(EVENT_MAPS.OrbitControlsChange, {
+    this.event.emit(EVENT_MAPS.orbitControlsChange, {
       x: Math.floor(position.x),
       y: Math.floor(position.y),
       z: Math.floor(position.z),
+    });
+  };
+
+  // 动画
+  animate = (x: number, y: number, z: number) => {
+    if (!this.mesh) {
+      return;
+    }
+    gsap.to(this.mesh.position, {
+      x,
+      y,
+      z,
+      duration: 5,
+      ease: 'power2.out',
+      onStart: (e) => {
+        this.event.emit(EVENT_MAPS.animateStart, e);
+      },
+      onComplete: (e) => {
+        this.event.emit(EVENT_MAPS.animateEnd, e);
+      },
     });
   };
 

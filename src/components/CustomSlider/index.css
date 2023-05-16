@@ -1,6 +1,7 @@
 .custom-silder-text {
   margin-left: 10px;
   color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
 }
 
 .custom-silder {
@@ -12,5 +13,5 @@
 .custom-silder .ant-slider {
   flex: 1;
   position: relative;
-  top: 7px;
+  top: 4px;
 }
