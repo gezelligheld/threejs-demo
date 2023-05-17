@@ -8,6 +8,7 @@ import {
   CAMERA_POSITION,
   POINT_LIGHT_POSITION,
   EVENT_MAPS,
+  SCENE_RANGE_COEFFICIENT
 } from '../constants';
 
 class Model {
@@ -44,6 +45,7 @@ class Model {
 
   constructor() {
     document.addEventListener('mousedown', this.handleMouseDown);
+    window.addEventListener('resize', this.handleResize);
   }
 
   init = (config: { wrap: HTMLElement | null }) => {
@@ -83,9 +85,7 @@ class Model {
     const width = window.innerWidth;
     const height = window.innerHeight;
     const k = width / height;
-    // 三维场景显示范围控制系数，系数越大，显示的范围越大
-    const s = 200;
-    const camera = new THREE.OrthographicCamera(-s * k, s * k, s, -s, 1, 1000);
+    const camera = new THREE.OrthographicCamera(-SCENE_RANGE_COEFFICIENT * k, SCENE_RANGE_COEFFICIENT * k, SCENE_RANGE_COEFFICIENT, -SCENE_RANGE_COEFFICIENT, 1, 1000);
     camera.position.set(
       CAMERA_POSITION.x,
       CAMERA_POSITION.y,
@@ -117,20 +117,12 @@ class Model {
 
   // 移动相机
   moveCamera = (x: number, y: number, z: number) => {
-    if (!this.camera || !this.scene) {
-      return;
-    }
-    this.camera.position.set(x, y, z);
-    this.camera.lookAt(this.scene.position);
+    this.camera?.position.set(x, y, z);
   };
 
   // 移动点光源
   movePointLight = (x: number, y: number, z: number) => {
-    if (!this.pointLight || !this.scene) {
-      return;
-    }
-    this.pointLight.position.set(x, y, z); //点光源位置
-    this.scene.add(this.pointLight);
+    this.pointLight?.position.set(x, y, z);
   };
 
   handleMouseDown = (e: MouseEvent) => {
@@ -170,6 +162,7 @@ class Model {
     if (!this.mesh) {
       return;
     }
+    // 参考官方文档 https://greensock.com/
     gsap.to(this.mesh.position, {
       x,
       y,
@@ -189,6 +182,19 @@ class Model {
   toggleAutoRotate = (value: boolean) => {
     this.isAutoRotate = value;
   };
+
+  handleResize = () => {
+    if (!this.camera) {
+      return;
+    }
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    const k = width / height;
+    this.camera.left = -SCENE_RANGE_COEFFICIENT * k;
+    this.camera.right = SCENE_RANGE_COEFFICIENT * k;
+    this.camera.updateProjectionMatrix();
+    this.renderer?.setSize(window.innerWidth, window.innerHeight - 1);
+  }
 
   // 渲染
   render = () => {
@@ -224,6 +230,7 @@ class Model {
     this.container = null;
 
     document.removeEventListener('mousedown', this.handleMouseDown);
+    window.removeEventListener('resize', this.handleResize);
     this.orbitControls?.removeEventListener(
       'change',
       this.handleControlsChange
