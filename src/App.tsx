@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { Form, FormProps, Checkbox, InputNumber, Button } from 'antd';
 
 import CustomSlider from './components/CustomSlider';
@@ -15,10 +15,9 @@ function App() {
   const [animating, setAnimating] = useState(false);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const instanceRef = useRef<Model | null>(null);
 
   const [form] = Form.useForm();
-
-  const model = useMemo(() => new Model(), []);
 
   const handleCameraChange: FormProps['onFieldsChange'] = (_, allFields) => {
     const data = allFields.reduce(
@@ -29,7 +28,7 @@ function App() {
         }),
       {} as { x: number; y: number; z: number }
     );
-    model.moveCamera(data.x, data.y, data.z);
+    instanceRef.current?.moveCamera(data.x, data.y, data.z);
   };
 
   const handleLightChange: FormProps['onFieldsChange'] = (_, allFields) => {
@@ -41,28 +40,31 @@ function App() {
         }),
       {} as { x: number; y: number; z: number }
     );
-    model.movePointLight(data.x, data.y, data.z);
+    instanceRef.current?.movePointLight(data.x, data.y, data.z);
   };
 
   const handleAnimationFinish: FormProps['onFinish'] = (values) => {
-    model.animate(values.x || 0, values.y || 0, values.z || 0);
+    instanceRef.current?.animate(values.x || 0, values.y || 0, values.z || 0);
   };
 
   useEffect(() => {
-    model.init({ wrap: containerRef.current });
-    model.event.on(EVENT_MAPS.orbitControlsChange, (position) => {
-      form.setFieldsValue(position);
-    });
-    model.event.on(EVENT_MAPS.animateStart, () => {
+    instanceRef.current = new Model({ wrap: containerRef.current });
+    instanceRef.current?.event.on(
+      EVENT_MAPS.orbitControlsChange,
+      (position) => {
+        form.setFieldsValue(position);
+      }
+    );
+    instanceRef.current?.event.on(EVENT_MAPS.animateStart, () => {
       setAnimating(true);
     });
-    model.event.on(EVENT_MAPS.animateEnd, () => {
+    instanceRef.current?.event.on(EVENT_MAPS.animateEnd, () => {
       setAnimating(false);
     });
     return () => {
-      model.destroy();
+      instanceRef.current?.destroy();
     };
-  }, [form, model]);
+  }, [form]);
 
   return (
     <div className="container" ref={containerRef}>
@@ -84,7 +86,9 @@ function App() {
           </Form.Item>
           <Form.Item label="自动旋转" name="rotate" valuePropName="checked">
             <Checkbox
-              onChange={(e) => model.toggleAutoRotate(e.target.checked)}
+              onChange={(e) =>
+                instanceRef.current?.toggleAutoRotate(e.target.checked)
+              }
             />
           </Form.Item>
         </Form>

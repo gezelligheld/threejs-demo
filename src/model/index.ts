@@ -2,13 +2,14 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import gsap from 'gsap';
 import { EventEmitter } from 'events';
+import * as dat from 'dat.gui';
 
 import { randomColor } from '../utils';
 import {
   CAMERA_POSITION,
   POINT_LIGHT_POSITION,
   EVENT_MAPS,
-  SCENE_RANGE_COEFFICIENT
+  SCENE_RANGE_COEFFICIENT,
 } from '../constants';
 
 class Model {
@@ -41,14 +42,22 @@ class Model {
   // 是否自动旋转物体
   private isAutoRotate = false;
 
+  private wrap: HTMLElement | null = null;
+
   event = new EventEmitter();
 
-  constructor() {
+  gui: Record<'camera', { [k: string]: dat.GUIController }> | null = null;
+
+  constructor(config: { wrap: HTMLElement | null }) {
+    this.wrap = config.wrap;
     document.addEventListener('mousedown', this.handleMouseDown);
     window.addEventListener('resize', this.handleResize);
+
+    this.init3D();
+    // this.initUI();
   }
 
-  init = (config: { wrap: HTMLElement | null }) => {
+  init3D = () => {
     // 创建场景
     const scene = new THREE.Scene();
     this.scene = scene;
@@ -85,7 +94,14 @@ class Model {
     const width = window.innerWidth;
     const height = window.innerHeight;
     const k = width / height;
-    const camera = new THREE.OrthographicCamera(-SCENE_RANGE_COEFFICIENT * k, SCENE_RANGE_COEFFICIENT * k, SCENE_RANGE_COEFFICIENT, -SCENE_RANGE_COEFFICIENT, 1, 1000);
+    const camera = new THREE.OrthographicCamera(
+      -SCENE_RANGE_COEFFICIENT * k,
+      SCENE_RANGE_COEFFICIENT * k,
+      SCENE_RANGE_COEFFICIENT,
+      -SCENE_RANGE_COEFFICIENT,
+      1,
+      1000
+    );
     camera.position.set(
       CAMERA_POSITION.x,
       CAMERA_POSITION.y,
@@ -100,7 +116,7 @@ class Model {
     // 不减1会出现滚动条，why?
     renderer.setSize(width, height - 1);
     renderer.setClearColor(0x000000, 1);
-    const wrap = config.wrap || document.body;
+    const wrap = this.wrap || document.body;
     wrap.appendChild(renderer.domElement);
     this.container = wrap;
     // 轨道控制器，可以鼠标控制物体
@@ -113,6 +129,24 @@ class Model {
 
     // 用于鼠标拾取
     this.raycaster = new THREE.Raycaster();
+  };
+
+  initUI = () => {
+    const gui = new dat.GUI();
+    if (this.camera) {
+      const folder = gui.addFolder('相机');
+      const x = folder.add(this.camera.position, 'x', -1000, 1000);
+      const y = folder.add(this.camera.position, 'y', -1000, 1000);
+      const z = folder.add(this.camera.position, 'z', -1000, 1000);
+      this.gui = {
+        ...(this.gui || {}),
+        camera: {
+          x,
+          y,
+          z,
+        },
+      };
+    }
   };
 
   // 移动相机
@@ -194,7 +228,7 @@ class Model {
     this.camera.right = SCENE_RANGE_COEFFICIENT * k;
     this.camera.updateProjectionMatrix();
     this.renderer?.setSize(window.innerWidth, window.innerHeight - 1);
-  }
+  };
 
   // 渲染
   render = () => {

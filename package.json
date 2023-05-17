@@ -19,6 +19,7 @@
     "three": "^0.152.2"
   },
   "devDependencies": {
+    "@types/dat.gui": "^0.7.10",
     "@types/events": "^3.0.0",
     "@types/react": "^18.0.37",
     "@types/react-dom": "^18.0.11",
