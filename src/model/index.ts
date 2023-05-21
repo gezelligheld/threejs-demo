@@ -1,11 +1,11 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 import gsap from 'gsap';
 import { EventEmitter } from 'events';
 import * as dat from 'dat.gui';
 
-import image from '../assets/texture.jpeg';
-
+import image from '../assets/environment.hdr';
 import { randomColor } from '../utils';
 import {
   CAMERA_POSITION,
@@ -62,19 +62,28 @@ class Model {
     // this.initUI();
   }
 
-  init3D = () => {
+  init3D = async () => {
+    // 加载管理器
+    const manager = new THREE.LoadingManager();
+    manager.onLoad = () => {
+      console.log('资源加载完成');
+    };
+    // 添加纹理
+    const loader = new RGBELoader(manager);
+    const texture = await loader.loadAsync(image);
+    // texture.mapping = THREE.EquirectangularReflectionMapping;
+
     /*
      * 创建场景
      */
     const scene = new THREE.Scene();
+    scene.background = texture;
+    scene.environment = texture;
     this.scene = scene;
 
     /*
      *创建网格模型（充当物体）
      */
-    // 添加纹理
-    const loader = new THREE.TextureLoader();
-    const texture = loader.load(image);
     for (let i = 0; i < 80; i++) {
       const size = Math.random() * 50;
       const geometry = new THREE.BoxGeometry(size, size, size);
@@ -82,7 +91,6 @@ class Model {
       // 材质
       const material = new THREE.MeshLambertMaterial({
         color,
-        normalMap: texture,
       });
       // 网格模型
       const mesh = new THREE.Mesh(geometry, material);
@@ -94,6 +102,9 @@ class Model {
       scene.add(mesh);
     }
 
+    /*
+     * 灯光
+     */
     // 点光源
     const point = new THREE.PointLight(0xffffff);
     this.pointLight = point;
@@ -115,7 +126,9 @@ class Model {
     );
     scene.add(axesHelper);
 
-    // 相机
+    /*
+     * 相机
+     */
     const width = window.innerWidth;
     const height = window.innerHeight;
     const k = width / height;
@@ -135,12 +148,12 @@ class Model {
     camera.lookAt(scene.position);
     this.camera = camera;
 
-    // 渲染器
+    /*
+     * 渲染器
+     */
     const renderer = new THREE.WebGLRenderer();
     this.renderer = renderer;
-    // 不减1会出现滚动条，why?
     renderer.setSize(width, height - 1);
-    renderer.setClearColor(0x000000, 1);
     const wrap = this.wrap || document.body;
     wrap.appendChild(renderer.domElement);
     this.container = wrap;
