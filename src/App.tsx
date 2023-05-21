@@ -13,6 +13,7 @@ import './App.css';
 
 function App() {
   const [animating, setAnimating] = useState(false);
+  const [current, setCurrent] = useState('');
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const instanceRef = useRef<Model | null>(null);
@@ -61,6 +62,10 @@ function App() {
     instanceRef.current?.event.on(EVENT_MAPS.animateEnd, () => {
       setAnimating(false);
     });
+    instanceRef.current.event.on(EVENT_MAPS.geometrySelected, (intersects) => {
+      const uuid = intersects[0]?.object.uuid;
+      setCurrent(uuid || '');
+    });
     return () => {
       instanceRef.current?.destroy();
     };
@@ -107,27 +112,31 @@ function App() {
             <CustomSlider min={-1000} max={1000} />
           </Form.Item>
         </Form>
-        <div className="title">动画</div>
-        <Form
-          layout="inline"
-          initialValues={ANIMATION_POSITION}
-          onFinish={handleAnimationFinish}
-        >
-          <Form.Item label="x" name="x">
-            <InputNumber width={100} min={-1000} max={1000} />
-          </Form.Item>
-          <Form.Item label="y" name="y">
-            <InputNumber min={-1000} max={1000} />
-          </Form.Item>
-          <Form.Item label="z" name="z">
-            <InputNumber min={-1000} max={1000} />
-          </Form.Item>
-          <Form.Item>
-            <Button htmlType="submit" loading={animating}>
-              {animating ? '运行中' : '开始'}
-            </Button>
-          </Form.Item>
-        </Form>
+        {current ? (
+          <>
+            <div className="title">动画</div>
+            <Form
+              layout="inline"
+              initialValues={ANIMATION_POSITION}
+              onFinish={handleAnimationFinish}
+            >
+              <Form.Item label="x" name="x">
+                <InputNumber width={100} min={-1000} max={1000} />
+              </Form.Item>
+              <Form.Item label="y" name="y">
+                <InputNumber min={-1000} max={1000} />
+              </Form.Item>
+              <Form.Item label="z" name="z">
+                <InputNumber min={-1000} max={1000} />
+              </Form.Item>
+              <Form.Item>
+                <Button htmlType="submit" loading={animating}>
+                  {animating ? '运行中' : '开始'}
+                </Button>
+              </Form.Item>
+            </Form>
+          </>
+        ) : null}
       </div>
     </div>
   );

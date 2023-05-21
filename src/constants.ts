@@ -11,4 +11,5 @@ export const EVENT_MAPS = {
   orbitControlsChange: 'orbitControlsChange',
   animateStart: 'animateStart',
   animateEnd: 'animateEnd',
+  geometrySelected: 'geometrySelected',
 };

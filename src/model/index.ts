@@ -4,6 +4,8 @@ import gsap from 'gsap';
 import { EventEmitter } from 'events';
 import * as dat from 'dat.gui';
 
+import image from '../assets/texture.jpeg';
+
 import { randomColor } from '../utils';
 import {
   CAMERA_POSITION,
@@ -31,7 +33,10 @@ class Model {
   // 鼠标拾取
   private raycaster: THREE.Raycaster | null = null;
 
-  // 网格模型
+  // 所有选中过的物体
+  private meshes: THREE.Mesh[] = [];
+
+  // 当前物体
   private mesh: THREE.Mesh | null = null;
 
   private animationFrameId: number | null = null;
@@ -58,16 +63,36 @@ class Model {
   }
 
   init3D = () => {
-    // 创建场景
+    /*
+     * 创建场景
+     */
     const scene = new THREE.Scene();
     this.scene = scene;
 
-    // 创建网格模型（充当物体）
-    const geometry = new THREE.BoxGeometry(100, 100, 100);
-    const material = new THREE.MeshLambertMaterial({ color: 0x0000ff });
-    const mesh = new THREE.Mesh(geometry, material);
-    this.mesh = mesh;
-    scene.add(mesh);
+    /*
+     *创建网格模型（充当物体）
+     */
+    // 添加纹理
+    const loader = new THREE.TextureLoader();
+    const texture = loader.load(image);
+    for (let i = 0; i < 80; i++) {
+      const size = Math.random() * 50;
+      const geometry = new THREE.BoxGeometry(size, size, size);
+      const color = new THREE.Color(randomColor());
+      // 材质
+      const material = new THREE.MeshLambertMaterial({
+        color,
+        normalMap: texture,
+      });
+      // 网格模型
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(
+        Math.random() * 500 - 250,
+        Math.random() * 500 - 250,
+        Math.random() * 500 - 250
+      );
+      scene.add(mesh);
+    }
 
     // 点光源
     const point = new THREE.PointLight(0xffffff);
@@ -123,6 +148,7 @@ class Model {
     const controls = new OrbitControls(camera, renderer.domElement);
     // 启用阻尼，增加重量感
     controls.enableDamping = true;
+    controls.autoRotate = true;
     controls.addEventListener('change', this.handleControlsChange);
     this.orbitControls = controls;
     this.render();
@@ -160,7 +186,12 @@ class Model {
   };
 
   handleMouseDown = (e: MouseEvent) => {
-    if (!this.raycaster || !this.scene || !this.camera) {
+    if (
+      !this.raycaster ||
+      !this.scene ||
+      !this.camera ||
+      (e.target as any)?.nodeName !== 'CANVAS'
+    ) {
       return;
     }
     const pointer = new THREE.Vector2();
@@ -172,13 +203,17 @@ class Model {
     // 获取点击到的物体
     // 原理是从物体中心向点击位置发射一条射线，如果这个距离比物体中心到物体顶点的距离都要小，则点击位置在物体里面
     const intersects = this.raycaster.intersectObjects(this.scene.children);
+    this.mesh = (intersects[0]?.object as THREE.Mesh) || null;
+    if (this.mesh) {
+      this.meshes.push(this.mesh);
+    }
     intersects.forEach(() => {
-      const color = new THREE.Color(randomColor());
       (
         (intersects[0].object as THREE.Mesh)
           .material as THREE.MeshLambertMaterial
-      ).color.set(color);
+      ).color.set(0xffffff);
     });
+    this.event.emit(EVENT_MAPS.geometrySelected, intersects);
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -243,12 +278,14 @@ class Model {
       }
       this.animationFrameId &&
         window.cancelAnimationFrame(this.animationFrameId);
-      if (this.mesh && this.isAutoRotate) {
-        this.mesh.rotation.set(
-          this.mesh.rotation.x + 0.01,
-          this.mesh.rotation.y + 0.01,
-          this.mesh.rotation.z + 0.01
-        );
+      if (this.meshes.length && this.isAutoRotate) {
+        this.meshes.forEach((mesh) => {
+          mesh.rotation.set(
+            mesh.rotation.x + 0.01,
+            mesh.rotation.y + 0.01,
+            mesh.rotation.z + 0.01
+          );
+        });
       }
       this.orbitControls.update();
       this.renderer.render(this.scene, this.camera);
