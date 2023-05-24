@@ -5,14 +5,14 @@ import gsap from 'gsap';
 import { EventEmitter } from 'events';
 import * as dat from 'dat.gui';
 
-import image from '../assets/environment.hdr';
-import { randomColor } from '../utils';
+import image from '../../assets/environment.hdr';
+import { randomColor } from '../../utils';
 import {
   CAMERA_POSITION,
   POINT_LIGHT_POSITION,
   EVENT_MAPS,
   SCENE_RANGE_COEFFICIENT,
-} from '../constants';
+} from './constants';
 
 class Model {
   // 相机
@@ -71,7 +71,7 @@ class Model {
     // 添加纹理
     const loader = new RGBELoader(manager);
     const texture = await loader.loadAsync(image);
-    // texture.mapping = THREE.EquirectangularReflectionMapping;
+    texture.mapping = THREE.EquirectangularReflectionMapping;
 
     /*
      * 创建场景

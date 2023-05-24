@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState } from 'react';
 import { Form, FormProps, Checkbox, InputNumber, Button } from 'antd';
 
-import CustomSlider from './components/CustomSlider';
+import CustomSlider from '../../components/CustomSlider';
 import Model from './model';
 import {
   CAMERA_POSITION,
@@ -9,7 +9,7 @@ import {
   POINT_LIGHT_POSITION,
   ANIMATION_POSITION,
 } from './constants';
-import './App.css';
+import './index.css';
 
 function App() {
   const [animating, setAnimating] = useState(false);
