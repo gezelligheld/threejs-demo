@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { MMDLoader } from 'three/addons/loaders/MMDLoader.js';
 import * as dat from 'dat.gui';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 import keli from '../../assets/keli/keli.pmx';
 
@@ -22,6 +23,11 @@ class Model {
 
   private animationFrameId: number | null = null;
 
+  // 轨道控制器
+  private orbitControls: OrbitControls | null = null;
+
+  private gui: dat.GUI | null = null;
+
   constructor(config: { wrap: HTMLElement | null }) {
     this.wrap = config.wrap;
     window.addEventListener('resize', this.handleResize);
@@ -31,6 +37,7 @@ class Model {
 
   init = () => {
     const gui = new dat.GUI();
+    this.gui = gui;
 
     const width = window.innerWidth;
     const height = window.innerHeight;
@@ -82,6 +89,11 @@ class Model {
     const wrap = this.wrap || document.body;
     wrap.appendChild(renderer.domElement);
     this.container = wrap;
+    // 轨道控制器，可以鼠标控制物体
+    const controls = new OrbitControls(camera, renderer.domElement);
+    // 启用阻尼，增加重量感
+    controls.enableDamping = true;
+    this.orbitControls = controls;
 
     this.load();
     this.render();
@@ -98,14 +110,35 @@ class Model {
       mesh.castShadow = true;
       this.scene.add(mesh);
 
+      let target: THREE.Object3D | null = null;
+      mesh.traverse((o) => {
+        console.log(o);
+        if (o.name === '下半身') {
+          target = o;
+        }
+      });
+
       // 手柄控制器
       const controls = new TransformControls(
         this.camera,
         this.renderer.domElement
       );
       controls.size = 0.75;
-      controls.attach(mesh);
+      target && controls.attach(target);
       this.scene.add(controls);
+      controls.addEventListener('mouseDown', () => {
+        if (!this.orbitControls) {
+          return;
+        }
+        this.orbitControls.enabled = false;
+      });
+      controls.addEventListener('mouseUp', () => {
+        if (!this.orbitControls) {
+          return;
+        }
+        this.orbitControls.enabled = true;
+      });
+
       // const mixer = new THREE.AnimationMixer(mesh);
       // const animationClip = new THREE.AnimationClip('walk', 20, [
       //   new THREE.KeyframeTrack('.position[x]', [0, 10], [0, 100]),
@@ -120,6 +153,7 @@ class Model {
     if (!this.camera) {
       return;
     }
+    this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.renderer?.setSize(window.innerWidth, window.innerHeight - 1);
   };
@@ -132,6 +166,7 @@ class Model {
       }
       this.animationFrameId &&
         window.cancelAnimationFrame(this.animationFrameId);
+      this.orbitControls?.update();
       this.renderer.render(this.scene, this.camera);
       this.animationFrameId = window.requestAnimationFrame(autoRun);
     };
@@ -143,6 +178,8 @@ class Model {
     this.renderer?.dispose();
     this.container?.removeChild(this.renderer?.domElement as Node);
     this.container = null;
+
+    this.gui?.destroy();
 
     window.removeEventListener('resize', this.handleResize);
   };
