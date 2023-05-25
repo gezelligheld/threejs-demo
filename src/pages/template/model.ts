@@ -46,7 +46,8 @@ class Model {
     /*
      * 相机
      */
-    const camera = new THREE.PerspectiveCamera(45, width / height, 1, 1000);
+    const camera = new THREE.PerspectiveCamera(50, width / height, 1, 1000);
+    camera.position.set(100, 100, 100);
     scene.add(camera);
     this.camera = camera;
 

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { MMDLoader } from 'three/addons/loaders/MMDLoader.js';
+import * as dat from 'dat.gui';
 
 import keli from '../../assets/keli/keli.pmx';
 
@@ -49,32 +50,38 @@ class Model {
       THREE.Material | THREE.Material[]
     >
   ) => {
+    const gui = new dat.GUI();
+
     const width = window.innerWidth;
     const height = window.innerHeight;
     /*
      * 创建场景
      */
     const scene = new THREE.Scene();
-    mesh && scene.add(mesh);
+    scene.scale;
+    if (mesh) {
+      // 产生投影
+      mesh.castShadow = true;
+      scene.add(mesh);
+    }
     this.scene = scene;
-    const geometry = new THREE.PlaneGeometry(200, 200);
+    const geometry = new THREE.PlaneGeometry(100, 100);
     const material = new THREE.MeshStandardMaterial({
+      color: 0xe8edd4,
       side: THREE.DoubleSide,
-      color: 0xffff00,
     });
     const plane = new THREE.Mesh(geometry, material);
+    plane.rotation.set(Math.PI / 2, 0, 0);
+    // 接收投影
+    plane.receiveShadow = true;
     scene.add(plane);
-
-    const axesHelper = new THREE.AxesHelper(
-      Math.max(window.innerWidth, window.innerHeight)
-    );
-    scene.add(axesHelper);
 
     /*
      * 相机
      */
-    const camera = new THREE.PerspectiveCamera(45, width / height, 1, 1000);
-    camera.lookAt(scene.position);
+    const camera = new THREE.PerspectiveCamera(50, width / height, 1, 1000);
+    camera.position.set(0, 25, 50);
+    scene.add(camera);
     this.camera = camera;
 
     /*
@@ -82,7 +89,11 @@ class Model {
      */
     const spotLight = new THREE.SpotLight(0xffffff);
     spotLight.position.set(100, 100, 100);
+    spotLight.angle = 0.2;
+    // 用于计算阴影的光源对象
+    spotLight.castShadow = true;
     scene.add(spotLight);
+    gui.add(spotLight, 'angle', 0, Math.PI / 2);
     const ambient = new THREE.AmbientLight(0x666666);
     scene.add(ambient);
 
@@ -93,7 +104,7 @@ class Model {
     this.renderer = renderer;
     renderer.setSize(width, height - 1);
     renderer.setClearColor(0x000000, 1);
-    this.renderer = renderer;
+    renderer.shadowMap.enabled = true;
     const wrap = this.wrap || document.body;
     wrap.appendChild(renderer.domElement);
     this.container = wrap;
