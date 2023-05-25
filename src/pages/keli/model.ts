@@ -29,27 +29,10 @@ class Model {
     this.wrap = config.wrap;
     window.addEventListener('resize', this.handleResize);
 
-    const loader = new MMDLoader();
-    loader.load(
-      keli,
-      (mesh) => {
-        this.init(mesh);
-      },
-      () => {
-        // todo
-      },
-      () => {
-        this.init();
-      }
-    );
+    this.init();
   }
 
-  init = (
-    mesh?: THREE.SkinnedMesh<
-      THREE.BufferGeometry<THREE.NormalBufferAttributes>,
-      THREE.Material | THREE.Material[]
-    >
-  ) => {
+  init = () => {
     const gui = new dat.GUI();
 
     const width = window.innerWidth;
@@ -58,12 +41,6 @@ class Model {
      * 创建场景
      */
     const scene = new THREE.Scene();
-    scene.scale;
-    if (mesh) {
-      // 产生投影
-      mesh.castShadow = true;
-      scene.add(mesh);
-    }
     this.scene = scene;
     const geometry = new THREE.PlaneGeometry(100, 100);
     const material = new THREE.MeshStandardMaterial({
@@ -75,6 +52,8 @@ class Model {
     // 接收投影
     plane.receiveShadow = true;
     scene.add(plane);
+
+    this.load(scene);
 
     /*
      * 相机
@@ -114,6 +93,24 @@ class Model {
     controls.enableDamping = true;
     this.orbitControls = controls;
     this.render();
+  };
+
+  // 加载模型
+  load = (scene: THREE.Scene) => {
+    const loader = new MMDLoader();
+    loader.load(keli, (mesh) => {
+      console.log(mesh);
+      mesh.castShadow = true;
+      scene.add(mesh);
+
+      // const mixer = new THREE.AnimationMixer(mesh);
+      // const animationClip = new THREE.AnimationClip('walk', 20, [
+      //   new THREE.KeyframeTrack('.position[x]', [0, 10], [0, 100]),
+      // ]);
+      // const action = mixer.clipAction(animationClip);
+      // action.loop = THREE.LoopRepeat;
+      // action.play();
+    });
   };
 
   handleResize = () => {
