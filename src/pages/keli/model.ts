@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { MMDLoader } from 'three/addons/loaders/MMDLoader.js';
 import * as dat from 'dat.gui';
 
@@ -21,9 +21,6 @@ class Model {
   private container: HTMLElement | null = null;
 
   private animationFrameId: number | null = null;
-
-  // 轨道控制器
-  private orbitControls: OrbitControls | null = null;
 
   constructor(config: { wrap: HTMLElement | null }) {
     this.wrap = config.wrap;
@@ -53,13 +50,11 @@ class Model {
     plane.receiveShadow = true;
     scene.add(plane);
 
-    this.load(scene);
-
     /*
      * 相机
      */
     const camera = new THREE.PerspectiveCamera(50, width / height, 1, 1000);
-    camera.position.set(0, 25, 50);
+    camera.position.set(0, 25, 100);
     scene.add(camera);
     this.camera = camera;
 
@@ -87,22 +82,30 @@ class Model {
     const wrap = this.wrap || document.body;
     wrap.appendChild(renderer.domElement);
     this.container = wrap;
-    // 轨道控制器，可以鼠标控制物体
-    const controls = new OrbitControls(camera, renderer.domElement);
-    // 启用阻尼，增加重量感
-    controls.enableDamping = true;
-    this.orbitControls = controls;
+
+    this.load();
     this.render();
   };
 
   // 加载模型
-  load = (scene: THREE.Scene) => {
+  load = () => {
     const loader = new MMDLoader();
     loader.load(keli, (mesh) => {
+      if (!this.scene || !this.camera || !this.renderer) {
+        return;
+      }
       console.log(mesh);
       mesh.castShadow = true;
-      scene.add(mesh);
+      this.scene.add(mesh);
 
+      // 手柄控制器
+      const controls = new TransformControls(
+        this.camera,
+        this.renderer.domElement
+      );
+      controls.size = 0.75;
+      controls.attach(mesh);
+      this.scene.add(controls);
       // const mixer = new THREE.AnimationMixer(mesh);
       // const animationClip = new THREE.AnimationClip('walk', 20, [
       //   new THREE.KeyframeTrack('.position[x]', [0, 10], [0, 100]),
@@ -124,17 +127,11 @@ class Model {
   // 渲染
   render = () => {
     const autoRun = () => {
-      if (
-        !this.camera ||
-        !this.scene ||
-        !this.renderer ||
-        !this.orbitControls
-      ) {
+      if (!this.camera || !this.scene || !this.renderer) {
         return;
       }
       this.animationFrameId &&
         window.cancelAnimationFrame(this.animationFrameId);
-      this.orbitControls.update();
       this.renderer.render(this.scene, this.camera);
       this.animationFrameId = window.requestAnimationFrame(autoRun);
     };
