@@ -9,3 +9,8 @@ declare module '*.pmx' {
   const src: string;
   export default src;
 }
+
+declare module '*.vmd' {
+  const src: string;
+  export default src;
+}

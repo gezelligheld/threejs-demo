@@ -1,10 +1,10 @@
 import * as THREE from 'three';
-import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { MMDLoader } from 'three/addons/loaders/MMDLoader.js';
 import * as dat from 'dat.gui';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 import keli from '../../assets/keli/keli.pmx';
+import keliVmd from '../../assets/keli/keli.vmd';
 
 class Model {
   // 相机
@@ -27,6 +27,11 @@ class Model {
   private orbitControls: OrbitControls | null = null;
 
   private gui: dat.GUI | null = null;
+
+  // 动画混合器
+  private mixer: THREE.AnimationMixer | null = null;
+
+  private clock: THREE.Clock | null = null;
 
   constructor(config: { wrap: HTMLElement | null }) {
     this.wrap = config.wrap;
@@ -95,6 +100,8 @@ class Model {
     controls.enableDamping = true;
     this.orbitControls = controls;
 
+    this.clock = new THREE.Clock();
+
     this.load();
     this.render();
   };
@@ -102,50 +109,17 @@ class Model {
   // 加载模型
   load = () => {
     const loader = new MMDLoader();
-    loader.load(keli, (mesh) => {
-      if (!this.scene || !this.camera || !this.renderer) {
-        return;
-      }
-      console.log(mesh);
-      mesh.castShadow = true;
-      this.scene.add(mesh);
+    loader.loadWithAnimation(keli, keliVmd, (mmd) => {
+      mmd.mesh.castShadow = true;
+      console.log(mmd.animation);
+      this.scene?.add(mmd.mesh);
 
-      let target: THREE.Object3D | null = null;
-      mesh.traverse((o) => {
-        console.log(o);
-        if (o.name === '下半身') {
-          target = o;
-        }
-      });
-
-      // 手柄控制器
-      const controls = new TransformControls(
-        this.camera,
-        this.renderer.domElement
-      );
-      controls.size = 0.75;
-      target && controls.attach(target);
-      this.scene.add(controls);
-      controls.addEventListener('mouseDown', () => {
-        if (!this.orbitControls) {
-          return;
-        }
-        this.orbitControls.enabled = false;
-      });
-      controls.addEventListener('mouseUp', () => {
-        if (!this.orbitControls) {
-          return;
-        }
-        this.orbitControls.enabled = true;
-      });
-
-      // const mixer = new THREE.AnimationMixer(mesh);
-      // const animationClip = new THREE.AnimationClip('walk', 20, [
-      //   new THREE.KeyframeTrack('.position[x]', [0, 10], [0, 100]),
-      // ]);
-      // const action = mixer.clipAction(animationClip);
-      // action.loop = THREE.LoopRepeat;
-      // action.play();
+      const clip = new THREE.AnimationClip('default', 10, mmd.animation.tracks);
+      const mixer = new THREE.AnimationMixer(mmd.mesh); //创建混合器
+      const animationAction = mixer.clipAction(clip); //返回动画操作对象
+      animationAction.loop = THREE.LoopRepeat;
+      animationAction.play();
+      this.mixer = mixer;
     });
   };
 
@@ -167,6 +141,7 @@ class Model {
       this.animationFrameId &&
         window.cancelAnimationFrame(this.animationFrameId);
       this.orbitControls?.update();
+      this.mixer?.update(this.clock?.getDelta() || 0);
       this.renderer.render(this.scene, this.camera);
       this.animationFrameId = window.requestAnimationFrame(autoRun);
     };
