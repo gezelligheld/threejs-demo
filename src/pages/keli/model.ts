@@ -5,6 +5,21 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 import keli from '../../assets/keli/keli.pmx';
 import keliVmd from '../../assets/keli/keli.vmd';
+import linghua from '../../assets/linghua/linghua.pmx';
+import linghuaVmd from '../../assets/linghua/linghua.vmd';
+
+const ASSETS = [
+  {
+    model: keli,
+    action: keliVmd,
+    position: new THREE.Vector3(0, 0, 0),
+  },
+  // {
+  //   model: linghua,
+  //   action: linghuaVmd,
+  //   position: new THREE.Vector3(10, 0, 0),
+  // },
+];
 
 class Model {
   // 相机
@@ -109,17 +124,24 @@ class Model {
   // 加载模型
   load = () => {
     const loader = new MMDLoader();
-    loader.loadWithAnimation(keli, keliVmd, (mmd) => {
-      mmd.mesh.castShadow = true;
-      console.log(mmd.animation);
-      this.scene?.add(mmd.mesh);
+    ASSETS.forEach(({ action, model, position }) => {
+      loader.loadWithAnimation(model, action, (mmd) => {
+        console.log(mmd);
+        mmd.mesh.castShadow = true;
+        mmd.mesh.position.set(position.x, position.y, position.z);
+        this.scene?.add(mmd.mesh);
 
-      const clip = new THREE.AnimationClip('default', 10, mmd.animation.tracks);
-      const mixer = new THREE.AnimationMixer(mmd.mesh); //创建混合器
-      const animationAction = mixer.clipAction(clip); //返回动画操作对象
-      animationAction.loop = THREE.LoopRepeat;
-      animationAction.play();
-      this.mixer = mixer;
+        const clip = new THREE.AnimationClip(
+          'default',
+          10,
+          mmd.animation.tracks
+        );
+        const mixer = new THREE.AnimationMixer(mmd.mesh); //创建混合器
+        const animationAction = mixer.clipAction(clip); //返回动画操作对象
+        animationAction.loop = THREE.LoopRepeat;
+        animationAction.play();
+        this.mixer = mixer;
+      });
     });
   };
 
