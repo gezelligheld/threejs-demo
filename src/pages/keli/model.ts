@@ -7,19 +7,23 @@ import keli from '../../assets/keli/keli.pmx';
 import keliVmd from '../../assets/keli/keli.vmd';
 import linghua from '../../assets/linghua/linghua.pmx';
 import linghuaVmd from '../../assets/linghua/linghua.vmd';
+import { gsap } from 'gsap';
 
 const ASSETS = [
   {
+    name: 'keli',
     model: keli,
     action: keliVmd,
-    position: new THREE.Vector3(0, 0, 0),
+    position: new THREE.Vector3(-10, 0, 0),
   },
-  // {
-  //   model: linghua,
-  //   action: linghuaVmd,
-  //   position: new THREE.Vector3(10, 0, 0),
-  // },
+  {
+    name: 'linghua',
+    model: linghua,
+    action: linghuaVmd,
+    position: new THREE.Vector3(10, 0, 0),
+  },
 ];
+const ROTATION_RADIUS = 10;
 
 class Model {
   // 相机
@@ -44,13 +48,20 @@ class Model {
   private gui: dat.GUI | null = null;
 
   // 动画混合器
-  private mixer: THREE.AnimationMixer | null = null;
+  private mixers: {
+    mixer: THREE.AnimationMixer;
+    name: string;
+    play: boolean;
+  }[] = [];
 
   private clock: THREE.Clock | null = null;
+
+  private raycaster: THREE.Raycaster | null = null;
 
   constructor(config: { wrap: HTMLElement | null }) {
     this.wrap = config.wrap;
     window.addEventListener('resize', this.handleResize);
+    window.addEventListener('mousedown', this.handleMousedown);
 
     this.init();
   }
@@ -76,6 +87,33 @@ class Model {
     // 接收投影
     plane.receiveShadow = true;
     scene.add(plane);
+    const group = new THREE.Group();
+    for (let i = 0; i < 3; i++) {
+      const ball = new THREE.SphereGeometry(1, 64, 64);
+      const material = new THREE.MeshStandardMaterial({ color: 0xe3f756 });
+      const mesh = new THREE.Mesh(ball, material);
+      // 小球圆周动画
+      const obj = { angle: 0 };
+      gsap.to(obj, {
+        angle: Math.PI * 2,
+        ease: 'power2.out',
+        repeat: Infinity,
+        duration: 5,
+        onUpdate: () => {
+          mesh.position.set(
+            ROTATION_RADIUS *
+              Math.cos(Math.PI / 2 + (i * Math.PI * 2) / 3 + obj.angle),
+            30,
+            ROTATION_RADIUS *
+              Math.sin(Math.PI / 2 + (i * Math.PI * 2) / 3 + obj.angle)
+          );
+        },
+      });
+      const l = new THREE.PointLight(0xe3f756, 1, 20);
+      l.add(mesh);
+      group.add(l);
+    }
+    scene.add(group);
 
     /*
      * 相机
@@ -88,7 +126,7 @@ class Model {
     /*
      * 光照
      */
-    const spotLight = new THREE.SpotLight(0xffffff);
+    const spotLight = new THREE.SpotLight(0xcccccc);
     spotLight.position.set(100, 100, 100);
     spotLight.angle = 0.2;
     // 用于计算阴影的光源对象
@@ -117,30 +155,33 @@ class Model {
 
     this.clock = new THREE.Clock();
 
+    this.raycaster = new THREE.Raycaster();
+
     this.load();
     this.render();
   };
 
   // 加载模型
   load = () => {
-    const loader = new MMDLoader();
-    ASSETS.forEach(({ action, model, position }) => {
+    ASSETS.forEach(({ action, model, position, name }, index) => {
+      const loader = new MMDLoader();
       loader.loadWithAnimation(model, action, (mmd) => {
         console.log(mmd);
+        mmd.mesh.name = name;
         mmd.mesh.castShadow = true;
         mmd.mesh.position.set(position.x, position.y, position.z);
         this.scene?.add(mmd.mesh);
 
         const clip = new THREE.AnimationClip(
-          'default',
-          10,
+          `default${index}`,
+          60,
           mmd.animation.tracks
         );
         const mixer = new THREE.AnimationMixer(mmd.mesh); //创建混合器
         const animationAction = mixer.clipAction(clip); //返回动画操作对象
         animationAction.loop = THREE.LoopRepeat;
         animationAction.play();
-        this.mixer = mixer;
+        this.mixers.push({ mixer, name, play: false });
       });
     });
   };
@@ -154,6 +195,48 @@ class Model {
     this.renderer?.setSize(window.innerWidth, window.innerHeight - 1);
   };
 
+  handleMousedown = (e: MouseEvent) => {
+    if (!this.raycaster || !this.camera || !this.scene || !this.orbitControls) {
+      return;
+    }
+    const pointer = new THREE.Vector2();
+    // 屏幕坐标转换为分量取值-1到1的 NDC 坐标，供顶点着色器使用
+    // 原点从左上角变成了中心位置，经换算得到下面的公式
+    pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+    pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    this.raycaster.setFromCamera(pointer, this.camera);
+    // 获取点击到的物体
+    // 原理是从物体中心向点击位置发射一条射线，如果这个距离比物体中心到物体顶点的距离都要小，则点击位置在物体里面
+    const intersects = this.raycaster.intersectObjects(this.scene.children);
+    if (intersects.length) {
+      const mesh = ASSETS.find(
+        ({ name }) => name === intersects[0].object.name
+      );
+      if (mesh) {
+        this.orbitControls.target = mesh.position;
+        gsap.to(this.camera.position, {
+          x: 0,
+          y: 20,
+          z: 40,
+          ease: 'power2.out',
+          onUpdate: () => {
+            this.camera?.updateProjectionMatrix();
+          },
+        });
+      }
+
+      const mixer = this.mixers.find(
+        ({ name }) => name === intersects[0].object.name
+      );
+      if (mixer) {
+        this.mixers = this.mixers.map((m) => ({
+          ...m,
+          play: m.name === intersects[0].object.name,
+        }));
+      }
+    }
+  };
+
   // 渲染
   render = () => {
     const autoRun = () => {
@@ -163,7 +246,9 @@ class Model {
       this.animationFrameId &&
         window.cancelAnimationFrame(this.animationFrameId);
       this.orbitControls?.update();
-      this.mixer?.update(this.clock?.getDelta() || 0);
+      this.mixers.forEach(({ mixer, play }) => {
+        play && mixer?.update(this.clock?.getDelta() || 0);
+      });
       this.renderer.render(this.scene, this.camera);
       this.animationFrameId = window.requestAnimationFrame(autoRun);
     };
@@ -175,6 +260,8 @@ class Model {
     this.renderer?.dispose();
     this.container?.removeChild(this.renderer?.domElement as Node);
     this.container = null;
+
+    this.mixers = [];
 
     this.gui?.destroy();
 
