@@ -27,6 +27,11 @@ class Model {
 
   private prevTime = performance.now();
 
+  private objects: THREE.Mesh<
+    THREE.BufferGeometry<THREE.NormalBufferAttributes>,
+    THREE.MeshPhongMaterial
+  >[] = [];
+
   // 动作
   action = {
     left: false,
@@ -138,6 +143,7 @@ class Model {
       box.position.y = Math.floor(Math.random() * 20) * 20 + 10;
       box.position.z = Math.floor(Math.random() * 20 - 10) * 20;
       scene.add(box);
+      this.objects.push(box);
     }
 
     /*
@@ -274,6 +280,11 @@ class Model {
           this.vector3.x += directionX * delta;
           this.orbitControls.moveRight(-this.vector3.x);
         }
+
+        const isOnObject = this.raycaster?.intersectObjects(
+          this.objects,
+          false
+        );
       }
       this.prevTime = time;
       this.renderer.render(this.scene, this.camera);
